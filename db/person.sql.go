@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const deletePerson = `-- name: DeletePerson :exec
@@ -40,6 +41,45 @@ func (q *Queries) GetPerson(ctx context.Context, id uuid.UUID) (Person, error) {
 		&i.Email,
 	)
 	return i, err
+}
+
+const getStudents = `-- name: GetStudents :many
+WITH teacher_classes AS (
+  SELECT r.class_code
+  FROM public.relations r
+  WHERE r.person_id = $1 AND r.role = 'teacher'
+)
+SELECT p.id, p.created_at, p.name, p.surname, p.email
+FROM public.person p
+JOIN public.relations r ON p.id = r.person_id
+WHERE r.class_code IN (SELECT class_code FROM teacher_classes)
+  AND r.role = 'student'
+`
+
+func (q *Queries) GetStudents(ctx context.Context, personID pgtype.UUID) ([]Person, error) {
+	rows, err := q.db.Query(ctx, getStudents, personID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Person
+	for rows.Next() {
+		var i Person
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.Name,
+			&i.Surname,
+			&i.Email,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPeople = `-- name: ListPeople :many
