@@ -46,3 +46,7 @@ clean: ## Cleanup the deps folder (node_modules)
 
 run: ## Run the application
 	@go run main.go
+
+dbdoc:
+	@docker run --rm -v /$$(pwd)/:/work -w /work ghcr.io/k1low/tbls:v1.72.0 doc postgresql://postgres:postgres@`ip addr show eth0 | grep -v inet6| grep inet | awk '{print $2}' | cut -d/ -f1`:5444/sqlc?sslmode=disable --rm-dist \
+	 || echo 'Docs generation failed. Please run "make database" first to start the database.';
