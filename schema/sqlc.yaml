@@ -9,3 +9,14 @@ sql:
         sql_package: "pgx/v5"
         out: "../db"
         emit_json_tags: true
+        overrides:
+          - column: "person.created_at"
+            go_type: "time.Time"
+          - column: "class.credits"
+            go_type: "int"
+          - column: "person.id"
+            go_type: "github.com/google/uuid.UUID"
+          - column: "relation.person_id"
+            go_type: "github.com/google/uuid.UUID"
+          - column: "relation.uuid"
+            go_type: "github.com/google/uuid.UUID"

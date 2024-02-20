@@ -1,0 +1,6 @@
+BEGIN
+
+DROP TYPE role_type CASCADE;
+
+
+COMMIT;

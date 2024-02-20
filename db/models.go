@@ -5,13 +5,74 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type RoleType string
+
+const (
+	RoleTypeStudent    RoleType = "student"
+	RoleTypeTeacher    RoleType = "teacher"
+	RoleTypeSupervisor RoleType = "supervisor"
+)
+
+func (e *RoleType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = RoleType(s)
+	case string:
+		*e = RoleType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for RoleType: %T", src)
+	}
+	return nil
+}
+
+type NullRoleType struct {
+	RoleType RoleType `json:"role_type"`
+	Valid    bool     `json:"valid"` // Valid is true if RoleType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullRoleType) Scan(value interface{}) error {
+	if value == nil {
+		ns.RoleType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.RoleType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullRoleType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.RoleType), nil
+}
+
+type Class struct {
+	Code    string `json:"code"`
+	Name    string `json:"name"`
+	Credits int    `json:"credits"`
+}
+
 type Person struct {
-	ID        pgtype.UUID      `json:"id"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
-	Name      string           `json:"name"`
-	Surname   string           `json:"surname"`
-	Email     string           `json:"email"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	Name      string    `json:"name"`
+	Surname   string    `json:"surname"`
+	Email     string    `json:"email"`
+}
+
+type Relation struct {
+	Uuid      pgtype.UUID `json:"uuid"`
+	Role      RoleType    `json:"role"`
+	PersonID  pgtype.UUID `json:"person_id"`
+	ClassCode string      `json:"class_code"`
 }

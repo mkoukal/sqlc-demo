@@ -8,8 +8,19 @@ package db
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
+
+const deletePerson = `-- name: DeletePerson :exec
+DELETE 
+FROM public.person 
+WHERE id = $1
+`
+
+func (q *Queries) DeletePerson(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deletePerson, id)
+	return err
+}
 
 const getPerson = `-- name: GetPerson :one
 SELECT id, created_at, name, surname, email
@@ -18,7 +29,7 @@ WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetPerson(ctx context.Context, id pgtype.UUID) (Person, error) {
+func (q *Queries) GetPerson(ctx context.Context, id uuid.UUID) (Person, error) {
 	row := q.db.QueryRow(ctx, getPerson, id)
 	var i Person
 	err := row.Scan(
@@ -29,4 +40,35 @@ func (q *Queries) GetPerson(ctx context.Context, id pgtype.UUID) (Person, error)
 		&i.Email,
 	)
 	return i, err
+}
+
+const listPeople = `-- name: ListPeople :many
+SELECT id, created_at, name, surname, email
+FROM public.person
+`
+
+func (q *Queries) ListPeople(ctx context.Context) ([]Person, error) {
+	rows, err := q.db.Query(ctx, listPeople)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Person
+	for rows.Next() {
+		var i Person
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.Name,
+			&i.Surname,
+			&i.Email,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
